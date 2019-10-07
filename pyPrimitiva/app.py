@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
-
 import datetime
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import feedparser
 import pymongo
 import smtplib
@@ -132,7 +130,7 @@ def main():
     # Writing the message (this message will appear in the email)
     body = fecha() + ":\n\n"
     for array in lista_formateada:
-        body += unicode(array, "utf-8") + "\n\n"
+        body += str(array) + "\n\n"
     body += "\nREINTEGRO: " + reintegro() + "\n\n"
     body += "COMPLEMENTARIO: " + complementario() + "\n"
     body += "JOKER: " + joker() + "\n"
