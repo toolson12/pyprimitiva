@@ -1,39 +1,48 @@
 import datetime
+from dotenv import load_dotenv
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import feedparser
+import json
+import os
 import pymongo
 import smtplib
 import time
 
-feed_url = "http://www.loteriasyapuestas.es/es/la-primitiva/resultados/.formatoRSS"
+load_dotenv(encoding="utf-8")
+
+FEED_URL = "http://www.loteriasyapuestas.es/es/la-primitiva/resultados/.formatoRSS"
 
 ## MongoDB handlers
-URI = "mongodb://<dbuser>:<dbpassword>@<dbdomain:port>/<dbname>" # Editar con la URI de la base de datos
+URI = os.getenv("DB_URI") 
 client = pymongo.MongoClient(URI)
 db = client["lottery_db"]
 coleccion_resultados = db["resultados"]
 ultimo_sorteo = db["ultimo_sorteo"]
 
 ## Email handlers
-USERNAME = 'Nombre de usuario de la cuenta de correo' # Editar con el nombre de usuario de la cuenta de correo
-PASSWORD = 'Contraseña de la cuenta de correo' # Editar con la contraseña de la cuenta de correo
-FROMADDRS = "Cuenta de correo desde la que se envía" # Editar con la dirección de correo que realiza el envío
-TOADDRS = ["Cuenta/s de correo que recibe/n los resultados"] # Editar con las direcciones de envío separadas por comas
+USERNAME =  os.getenv("EMAIL_USERNAME") 
+PASSWORD = os.getenv("EMAIL_PASSWORD") 
+FROMADDRS = os.getenv("EMAIL_FROMADDRS") 
+TOADDRS = json.loads(os.getenv("EMAIL_TOADDRS")) 
 
 ## Apuestas y apostantes
-my_numbers = {"Hurley": [[4, 8, 15, 16, 23, 42]]} # Editar con el nombre y los números de cada apostante.
+PARTICIPANTE = os.getenv("PARTICIPANTE")
+PARTICIPACIONES = json.loads(os.getenv("PARTICIPACIONES"))
 
+mis_numeros = {
+                PARTICIPANTE: PARTICIPACIONES
+            } 
 
-def parse_feed(feed_url):
-    feed = feedparser.parse(feed_url)
+def parse_feed(FEED_URL):
+    feed = feedparser.parse(FEED_URL)
     raw_date = feed.entries[1]["title"]
     raw_text = feed.entries[1]["description"]
     return raw_date, raw_text
 
 
 def combinacion():
-    raw_text = parse_feed(feed_url)[1]
+    raw_text = parse_feed(FEED_URL)[1]
     start = raw_text.find("<b>") + 3
     stop = raw_text.find("</b>")
     raw_numbers = raw_text[start:stop]
@@ -45,7 +54,7 @@ def combinacion():
 
 
 def reintegro():
-    raw_text = parse_feed(feed_url)[1]
+    raw_text = parse_feed(FEED_URL)[1]
     start = raw_text.find("R(") + 2
     stop = raw_text.find(")</b>", start)
     raw_reintegro = raw_text[start:stop]
@@ -53,7 +62,7 @@ def reintegro():
 
 
 def complementario():
-    raw_text = parse_feed(feed_url)[1]
+    raw_text = parse_feed(FEED_URL)[1]
     start = raw_text.find("C(") + 2
     stop = raw_text.find(")</b>", start)
     raw_complementario = raw_text[start:stop]
@@ -61,7 +70,7 @@ def complementario():
 
 
 def joker():
-    raw_text = parse_feed(feed_url)[1]
+    raw_text = parse_feed(FEED_URL)[1]
     start = raw_text.find("J(") + 2
     stop = raw_text.find(")</b>", start)
     raw_joker = raw_text[start:stop]
@@ -69,7 +78,7 @@ def joker():
 
 
 def fecha():
-    raw_date = parse_feed(feed_url)[0]
+    raw_date = parse_feed(FEED_URL)[0]
     return raw_date
 
 
@@ -83,9 +92,9 @@ def is_updated():
         return True
 
 
-def check_win(numbers, my_numbers):
+def check_win(numbers, mis_numeros):
     lista_de_resultados = []
-    for apostante, boleto in my_numbers.items():
+    for apostante, boleto in mis_numeros.items():
         for apuesta in boleto:
             resultado = {}
             aciertos = 0
@@ -107,7 +116,7 @@ def check_win(numbers, my_numbers):
 
 
 def main():
-    lista_de_resultados = check_win(combinacion(), my_numbers)
+    lista_de_resultados = check_win(combinacion(), mis_numeros)
     lista_formateada = []
 
     for resultado in lista_de_resultados:
@@ -120,14 +129,13 @@ def main():
                 resultado["numeros_acertados"]
             ))
 
-    # Specifying the from and to addresses
+    # Construcción del email
     fromaddr = FROMADDRS
     toaddrs = TOADDRS
     msg = MIMEMultipart()
     msg['From'] = fromaddr
     msg['To'] = ", ".join(toaddrs)
-    msg['Subject'] = fecha()
-    # Writing the message (this message will appear in the email)
+    msg['Subject'] = fecha()    
     body = fecha() + ":\n\n"
     for array in lista_formateada:
         body += str(array) + "\n\n"
@@ -140,7 +148,7 @@ def main():
     # Gmail Login
     username = USERNAME
     password = PASSWORD
-    # Sending the mail
+    # Envío del email
     server = smtplib.SMTP('smtp.gmail.com:587')
     server.starttls()
     server.login(username, password)
@@ -155,7 +163,7 @@ def main():
 # # checks date
 today = datetime.date.today()
 weekday = today.weekday()
-if weekday == 3 or weekday == 5:
+if weekday == 3 or weekday == 5: 
     while not is_updated():
         time.sleep(600)
     else:
