@@ -58,7 +58,7 @@ En el caso de `DB_URI` se define por defecto un servidor MongoDB activo en local
 
 Una opción es mediante una cuenta gratuita en [MLab](https://mlab.com/), con la que podremos obtener la `URI` necesaria.
 
-    DB_URI = mongodb://<dbuser>:<dbpassword>@<dbdomain:port>/<dbname>
+    DB_URI=mongodb://<dbuser>:<dbpassword>@<dbdomain:port>/<dbname>
 
 
 Tras esto, editamos las variables `EMAIL_USERNAME` con el nombre del usuario de la cuenta de Gmail desde la que enviaremos las notificaciones y su respectiva contraseña. Por ejemplo:
